@@ -18,7 +18,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests python-dotenv supabase pandas scikit-learn xgboost lightgbm shap joblib numpy matplotlib seaborn
+        run: pip install requests python-dotenv supabase pandas scikit-learn xgboost lightgbm shap joblib numpy matplotlib seaborn pytz
 
       - name: Run EDA
         env:
