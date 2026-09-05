@@ -125,7 +125,6 @@ def save_shap(model, X_train, day, name):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(sample)
 
-        # Random Forest returns a list of arrays (one per output) — unwrap it
         if isinstance(shap_values, list):
             shap_values = shap_values[0]
 
@@ -149,7 +148,6 @@ def save_shap(model, X_train, day, name):
             index=sample.columns
         )
 
-        # expected_value may be an array (e.g. Random Forest) — extract scalar safely
         ev = explainer.expected_value if hasattr(explainer, "expected_value") else 0
         if hasattr(ev, "__len__"):
             ev = float(ev[0])
@@ -188,7 +186,6 @@ if __name__ == "__main__":
 
         save_shap(best_model, X_train, day, best_name)
 
-    # Save timestamp for display in app
     PKT = pytz.timezone("Asia/Karachi")
     with open("models/last_updated.txt", "w") as f:
         f.write(datetime.now(PKT).strftime("%d %b %Y, %H:%M PKT"))

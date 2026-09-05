@@ -10,9 +10,11 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+#lahore coordinates
 LAT = 31.5497
 LON = 74.3436
 
+#backfill for 1 year prior
 END_DATE   = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 START_DATE = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 

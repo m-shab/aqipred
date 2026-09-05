@@ -99,9 +99,9 @@ if __name__ == "__main__":
     row = compute_features(weather, aq, prev_aqi)
     print(row)
 
-    # Skip if this hour already exists (prevents duplicate rows on re-runs)
+    # Skip if this hour already exists -->> prevent duplicates
     if row_exists_for_hour(row["timestamp"]):
-        print(f"\n⚠️  Row for {row['timestamp']} already exists — skipping insert.")
+        print(f"\n Row for {row['timestamp']} already exists — skipping insert.")
     else:
         print("\nPushing to Supabase...")
         push_to_supabase(row)
