@@ -109,6 +109,53 @@ def aqi_meta(v):
     if v <= 300: return "Very Unhealthy",  "#7a4a8a","#e8d6f0"
     return             "Hazardous",        "#8a2020","#f0d0d0"
 
+def alert_banner(aqi, forecasts=None):
+    """Returns HTML alert banner if current or forecasted AQI is >= 200, else empty string."""
+    # Check if any forecasted day is also hazardous
+    forecast_warning = ""
+    if forecasts:
+        bad_days = [(d.strftime("%a %d %b"), v) for d, v, _ in forecasts if v >= 200]
+        if bad_days:
+            forecast_warning = " Also forecast: " + ", ".join(f"{d} ({v})" for d, v in bad_days) + "."
+
+    if aqi > 300:
+        return f"""
+        <div class="alert-banner hazardous">
+            <div class="alert-icon">🚨</div>
+            <div>
+                <div class="alert-title" style="color:#8a2020">HAZARDOUS AIR QUALITY — AQI {aqi}</div>
+                <div class="alert-body" style="color:#5a1010">
+                    Air quality poses a serious health risk to everyone. Stay indoors, seal windows and doors,
+                    and avoid all outdoor activity. Use air purifiers if available.{forecast_warning}
+                </div>
+            </div>
+        </div>"""
+    elif aqi > 200:
+        return f"""
+        <div class="alert-banner very-unhealthy">
+            <div class="alert-icon">⚠️</div>
+            <div>
+                <div class="alert-title" style="color:#7a4a8a">VERY UNHEALTHY AIR QUALITY — AQI {aqi}</div>
+                <div class="alert-body" style="color:#4a2a5a">
+                    Health alert: everyone may experience serious health effects.
+                    Avoid prolonged outdoor exposure. Keep windows closed and run air purifiers.{forecast_warning}
+                </div>
+            </div>
+        </div>"""
+    elif aqi > 150:
+        return f"""
+        <div class="alert-banner unhealthy">
+            <div class="alert-icon">⚠️</div>
+            <div>
+                <div class="alert-title" style="color:#b34040">UNHEALTHY AIR QUALITY — AQI {aqi}</div>
+                <div class="alert-body" style="color:#7a2020">
+                    Everyone may begin to experience health effects. Sensitive groups should avoid outdoor activity.
+                    Consider wearing an N95 mask if going outside.{forecast_warning}
+                </div>
+            </div>
+        </div>"""
+    return ""
+
 def tips_for(aqi):
     if aqi <= 50:
         return [("✅","Great day outdoors","Air quality is excellent. Enjoy outdoor activities freely."),("🏃","Exercise outside","Perfect conditions for running."),("🪟","Open your windows","Let fresh air circulate.")]
@@ -265,6 +312,29 @@ section[data-testid="stSidebar"] > div:first-child {{
 .ftbl td {{ padding: 0.8rem; border-bottom: 1px solid {C_CREAM2}; font-size: 0.85rem; }}
 .fname {{ font-family: 'DM Mono', monospace; font-weight: 600; color: {C_DARK}; }}
 
+/* Alert Banner */
+.alert-banner {{
+    border-radius: 14px; padding: 1.2rem 1.6rem; margin-bottom: 1.5rem;
+    display: flex; align-items: flex-start; gap: 1rem;
+    animation: pulse-border 2s infinite;
+}}
+.alert-banner.hazardous {{
+    background: #f0d0d0; border: 2px solid #8a2020;
+}}
+.alert-banner.very-unhealthy {{
+    background: #e8d6f0; border: 2px solid #7a4a8a;
+}}
+.alert-banner.unhealthy {{
+    background: #f0d6d6; border: 2px solid #b34040;
+}}
+.alert-icon {{ font-size: 2rem; line-height: 1; flex-shrink: 0; }}
+.alert-title {{ font-size: 1rem; font-weight: 700; margin-bottom: 0.2rem; }}
+.alert-body  {{ font-size: 0.82rem; line-height: 1.5; }}
+@keyframes pulse-border {{
+    0%, 100% {{ opacity: 1; }}
+    50%       {{ opacity: 0.75; }}
+}}
+
 /* Sidebar nav buttons */
 .stButton>button {{
     background: transparent !important;
@@ -332,6 +402,11 @@ if feat:
         f'<div class="top-bar-sub">Lahore, Punjab · {datetime.now(PKT).strftime("%A, %d %B")}</div></div>',
         unsafe_allow_html=True
     )
+
+    # ── Alert banner (shown on all pages if AQI is bad) ──
+    banner = alert_banner(cur, fc)
+    if banner:
+        st.markdown(banner, unsafe_allow_html=True)
 
     # ══════════════════════════════════════════════════════════
     if page == "Live Forecast":
