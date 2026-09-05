@@ -317,13 +317,50 @@ if feat:
             <div class="cond-cell"><div class="cond-lbl">Temp</div><div class="cond-val">{feat['temperature']:.0f}°C</div></div>
             <div class="cond-cell"><div class="cond-lbl">Humidity</div><div class="cond-val">{feat['humidity']:.0f}%</div></div>
             <div class="cond-cell"><div class="cond-lbl">Wind</div><div class="cond-val">{feat['wind_speed']:.0f} km/h</div></div>
-            <div class="cond-cell"><div class="cond-lbl">PM2.5</div><div class="cond-val">{feat['pm25']:.0f}</div></div>
-            <div class="cond-cell"><div class="cond-lbl">PM10</div><div class="cond-val">{feat['pm10']:.0f}</div></div>
-            <div class="cond-cell"><div class="cond-lbl">NO₂</div><div class="cond-val">{feat['no2']:.0f}</div></div>
-            <div class="cond-cell"><div class="cond-lbl">O₃</div><div class="cond-val">{feat['o3']:.0f}</div></div>
+            <div class="cond-cell"><div class="cond-lbl">PM2.5</div><div class="cond-val">{feat['pm25']:.0f} <span style="font-size:0.6rem;font-weight:400">µg/m³</span></div></div>
+            <div class="cond-cell"><div class="cond-lbl">PM10</div><div class="cond-val">{feat['pm10']:.0f} <span style="font-size:0.6rem;font-weight:400">µg/m³</span></div></div>
+            <div class="cond-cell"><div class="cond-lbl">NO₂</div><div class="cond-val">{feat['no2']:.0f} <span style="font-size:0.6rem;font-weight:400">µg/m³</span></div></div>
+            <div class="cond-cell"><div class="cond-lbl">O₃</div><div class="cond-val">{feat['o3']:.0f} <span style="font-size:0.6rem;font-weight:400">µg/m³</span></div></div>
         </div>
         """, unsafe_allow_html=True)
 
+        # --- TIMELINE CHART ---
+        st.subheader("4-Day AQI Timeline")
+        timeline_labels = ["Today"] + [date.strftime("%a\n%d %b") for date, _, _ in fc]
+        timeline_values = [cur, d1, d2, d3]
+        timeline_colors = [aqi_meta(v)[1] for v in timeline_values]
+
+        fig, ax = plt.subplots(figsize=(10, 3.2))
+        fig.patch.set_facecolor("#e4dcb4")
+        ax.set_facecolor("#e4dcb4")
+
+        # shaded AQI bands
+        bands = [(0,50,"#d6ede0"), (50,100,"#f5edce"), (100,150,"#d6e8f0"),
+                 (150,200,"#f0d6d6"), (200,300,"#e8d6f0")]
+        for lo, hi, bc in bands:
+            ax.axhspan(lo, hi, color=bc, alpha=0.35, zorder=0)
+
+        xs = list(range(4))
+        ax.plot(xs, timeline_values, color="#2d4847", linewidth=2.5,
+                zorder=2, solid_capstyle="round")
+        for x, y, c in zip(xs, timeline_values, timeline_colors):
+            ax.scatter(x, y, color=c, s=120, zorder=3, edgecolors="#2d4847", linewidths=1.5)
+            ax.text(x, y + 6, str(y), ha="center", va="bottom",
+                    fontsize=11, fontweight="700", color="#1c2e2c")
+
+        ax.set_xticks(xs)
+        ax.set_xticklabels(timeline_labels, fontsize=10, color="#1c2e2c")
+        ax.set_yticks([0, 50, 100, 150, 200, 300])
+        ax.tick_params(axis="y", labelcolor="#7a9a94", labelsize=8)
+        ax.set_ylim(0, max(timeline_values) + 50)
+        ax.spines[["top","right","left","bottom"]].set_visible(False)
+        ax.yaxis.grid(True, color="#c8c0a0", linewidth=0.5, linestyle="--")
+        ax.set_axisbelow(True)
+        plt.tight_layout(pad=0.5)
+        st.pyplot(fig)
+        plt.close(fig)
+
+        # --- 3-DAY FORECAST CARDS ---
         st.subheader("3-Day Outlook")
         fc_cols = st.columns(3)
         for i, (date, aqi, mname) in enumerate(fc):
@@ -337,6 +374,35 @@ if feat:
                     <div style="font-size:0.6rem; color:{C_MUTED}; margin-top:1rem; border-top:1px solid rgba(0,0,0,0.05); padding-top:0.5rem">{mname}</div>
                 </div>
                 """, unsafe_allow_html=True)
+
+        # --- INLINE SHAP BREAKDOWN ---
+        st.subheader("Prediction Breakdown")
+        st.caption("Top features driving each day's forecast — green bars push AQI down, red bars push it up.")
+
+        shap_available = any(
+            os.path.exists(f"models/shap/shap_day{d}.png") for d in [1,2,3]
+        )
+
+        if shap_available:
+            shap_cols = st.columns(3)
+            for day_num, (date, aqi, mname) in enumerate(fc, 1):
+                shap_path = f"models/shap/shap_day{day_num}.png"
+                lbl, col, _ = aqi_meta(aqi)
+                with shap_cols[day_num - 1]:
+                    st.markdown(f"""
+                    <div style="background:{C_CREAM2}; border-radius:12px; padding:1rem; margin-bottom:0.5rem;">
+                        <div style="font-size:0.7rem; font-weight:700; color:{C_MUTED}; text-transform:uppercase; letter-spacing:0.08em">{date.strftime('%A, %d %b')}</div>
+                        <div style="font-size:1.8rem; font-weight:800; color:{col}; line-height:1.1">{aqi}</div>
+                        <div style="font-size:0.75rem; color:{col}; font-weight:600; margin-bottom:0.5rem">{lbl}</div>
+                        <div style="font-size:0.6rem; color:{C_MUTED}">{mname}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    if os.path.exists(shap_path):
+                        st.image(shap_path, use_container_width=True)
+                    else:
+                        st.caption("SHAP plot not yet generated.")
+        else:
+            st.info("SHAP plots will appear here after the first training run completes.")
 
     elif page == "Health Tips":
         for day_offset, (date, aqi, _) in enumerate([(today, cur, "")] + fc):
