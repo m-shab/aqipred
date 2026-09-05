@@ -1,8 +1,10 @@
-import requests
-from datetime import datetime
 import os
+import requests
+from datetime import datetime, timezone, timedelta
 from dotenv import load_dotenv
 from supabase import create_client
+
+PKT = timezone(timedelta(hours=5))
 
 load_dotenv()
 
@@ -21,7 +23,7 @@ def fetch_weather():
         "&forecast_days=1"
     )
     hourly = requests.get(url).json()["hourly"]
-    current_hour = datetime.now().hour
+    current_hour = datetime.now(PKT).hour
     return {
         "temperature"  : hourly["temperature_2m"][current_hour],
         "humidity"     : hourly["relative_humidity_2m"][current_hour],
@@ -37,7 +39,7 @@ def fetch_air_quality():
         "&forecast_days=1"
     )
     hourly = requests.get(url).json()["hourly"]
-    current_hour = datetime.now().hour
+    current_hour = datetime.now(PKT).hour
     return {
         "aqi" : hourly["us_aqi"][current_hour],
         "pm25": hourly["pm2_5"][current_hour],
@@ -58,7 +60,7 @@ def row_exists_for_hour(ts):
     return len(response.data) > 0
 
 def compute_features(weather, aq, prev_aqi):
-    now = datetime.now()
+    now = datetime.now(PKT).replace(tzinfo=None)
     # Truncate to the current hour so timestamps always align with backfill data
     now_hour = now.replace(minute=0, second=0, microsecond=0)
     aqi_change_rate = aq["aqi"] - prev_aqi if prev_aqi is not None else 0
