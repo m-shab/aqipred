@@ -4,6 +4,7 @@ import requests
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import pytz
 import os
 import matplotlib
 matplotlib.use("Agg")
@@ -52,8 +53,10 @@ C_CREAM2  = "#e4dcb4"
 C_INK     = "#1c2e2c"   
 C_MUTED   = "#7a9a94"   
 
+PKT = pytz.timezone("Asia/Karachi")
+
 # --- DATA FETCHING ---
-def fetch_forecast(ttl=300):
+def fetch_forecast():
     try:
         w = requests.get(
             f"https://api.open-meteo.com/v1/forecast?latitude={LAT}&longitude={LON}"
@@ -70,7 +73,7 @@ def fetch_forecast(ttl=300):
 
 def build_features(w, a):
     if not w or not a: return None
-    now = datetime.now()
+    now = datetime.now(PKT)
     h   = now.hour
     vals        = [v for v in a["us_aqi"] if v is not None]
     cur         = a["us_aqi"][h] or 0
@@ -147,27 +150,15 @@ html, body, .stApp {{
 }}
 
 /* Keep Header for Sidebar Toggle but style it */
-/* Sidebar toggle */
 header[data-testid="stHeader"] {{
-    background: {C_DARK} !important;
+    background: transparent !important;
 }}
 
-header[data-testid="stHeader"] button,
-button[data-testid="stSidebarNavToggleButton"],
-button[data-testid="collapsedControl"],
-button[kind="header"] {{
-    background: {C_DARK} !important;
-    border: 1px solid {C_CREAM} !important;
+/* Sidebar toggle button — dark background so the white icon is visible */
+[data-testid="stSidebarCollapsedControl"] button,
+button[data-testid="stSidebarNavToggleButton"] {{
+    background-color: {C_DARK} !important;
     border-radius: 8px !important;
-}}
-
-header[data-testid="stHeader"] button svg,
-button[data-testid="stSidebarNavToggleButton"] svg,
-button[data-testid="collapsedControl"] svg,
-button[kind="header"] svg {{
-    stroke: {C_CREAM} !important;
-    fill: none !important;
-    color: {C_CREAM} !important;
 }}
 
 #MainMenu, footer {{ visibility: hidden; }}
@@ -271,7 +262,7 @@ if feat:
     d2 = max(0, round(m2.predict(X)[0])) if m2 else 152
     d3 = max(0, round(m3.predict(X)[0])) if m3 else 138
 
-    today = datetime.now().date()
+    today = datetime.now(PKT).date()
     fc = [
         (today + timedelta(days=1), d1, model_name(1)),
         (today + timedelta(days=2), d2, model_name(2)),
@@ -284,7 +275,7 @@ if feat:
 
     # --- SIDEBAR ---
     with st.sidebar:
-        st.markdown(f'<div class="sb-logo"><h2>🇵🇰 Lahore AQI</h2><p>Machine Learning Forecast<br>{datetime.now().strftime("%H:%M Local Time")}</p></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sb-logo"><h2>🇵🇰 Lahore AQI</h2><p>Machine Learning Forecast<br>{datetime.now(PKT).strftime("%H:%M PKT")}</p></div>', unsafe_allow_html=True)
         
         pages = ["Live Forecast", "Health Tips", "SHAP Explanations", "EDA & Analysis", "Model Registry", "Feature Guide"]
         if "page" not in st.session_state: st.session_state.page = "Live Forecast"
@@ -296,7 +287,7 @@ if feat:
 
     # --- MAIN CONTENT ---
     page = st.session_state.page
-    st.markdown(f'<div class="top-bar"><h1>{page}</h1><div class="top-bar-sub">Lahore, Punjab · {datetime.now().strftime("%A, %d %B")}</div></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="top-bar"><h1>{page}</h1><div class="top-bar-sub">Lahore, Punjab · {datetime.now(PKT).strftime("%A, %d %B")}</div></div>', unsafe_allow_html=True)
 
     if page == "Live Forecast":
         pct = min(cur / 300 * 100, 100)
