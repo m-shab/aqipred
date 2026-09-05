@@ -18,7 +18,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: pip install requests python-dotenv supabase pandas scikit-learn xgboost lightgbm shap joblib numpy matplotlib
+        run: pip install requests python-dotenv supabase pandas scikit-learn xgboost lightgbm shap joblib numpy matplotlib seaborn
+
+      - name: Run EDA
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python notebooks/eda.py
 
       - name: Run training pipeline
         env:
@@ -26,10 +32,10 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python notebooks/training.py
 
-      - name: Commit updated models to repo
+      - name: Commit updated models and plots to repo
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add models/
-          git diff --cached --quiet || git commit -m "chore: update models [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+          git add models/ eda_plots/
+          git diff --cached --quiet || git commit -m "chore: update models + EDA plots [$(date -u '+%Y-%m-%d %H:%M UTC')]"
           git push

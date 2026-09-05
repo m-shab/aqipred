@@ -9,7 +9,8 @@ import shap
 import joblib
 import os
 import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import pytz
 from dotenv import load_dotenv
 from supabase import create_client
 
@@ -116,18 +117,55 @@ def train(X_train, X_test, y_train, y_test):
     return best["model"], best["name"]
 
 def save_shap(model, X_train, day, name):
+    import json
     print(f"Computing SHAP for Day {day}...")
     os.makedirs("models/shap", exist_ok=True)
     try:
         sample = X_train.sample(min(200, len(X_train)), random_state=42)
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(sample)
+
+        # Random Forest returns a list of arrays (one per output) — unwrap it
+        if isinstance(shap_values, list):
+            shap_values = shap_values[0]
+
+        # Cast to float64 so json.dump handles all values correctly (fixes XGBoost float32 issue)
+        shap_values = np.array(shap_values, dtype=np.float64)
+
+        # Save PNG summary plot
         plt.figure()
         shap.summary_plot(shap_values, sample, show=False)
         plt.tight_layout()
         plt.savefig(f"models/shap/shap_day{day}.png", dpi=100)
         plt.close()
-        print(f"SHAP plot saved for Day {day}")
+
+        # Save mean SHAP values per feature as JSON for native bar rendering
+        mean_shap = pd.Series(
+            np.abs(shap_values).mean(axis=0),
+            index=sample.columns
+        ).sort_values(ascending=False)
+        signed_shap = pd.Series(
+            shap_values.mean(axis=0),
+            index=sample.columns
+        )
+
+        # expected_value may be an array (e.g. Random Forest) — extract scalar safely
+        ev = explainer.expected_value if hasattr(explainer, "expected_value") else 0
+        if hasattr(ev, "__len__"):
+            ev = float(ev[0])
+        else:
+            ev = float(ev)
+
+        shap_data = {
+            "features":   mean_shap.index.tolist()[:8],
+            "mean_abs":   [float(v) for v in mean_shap.values[:8]],
+            "signed":     [float(signed_shap[f]) for f in mean_shap.index.tolist()[:8]],
+            "base_value": ev,
+        }
+        with open(f"models/shap/shap_day{day}.json", "w") as f:
+            json.dump(shap_data, f)
+
+        print(f"SHAP plot + JSON saved for Day {day}")
     except Exception as e:
         print(f"SHAP failed for {name}: {e}")
 
@@ -149,3 +187,9 @@ if __name__ == "__main__":
         print(f"Saved model_day{day}.pkl ({best_name})")
 
         save_shap(best_model, X_train, day, best_name)
+
+    # Save timestamp for display in app
+    PKT = pytz.timezone("Asia/Karachi")
+    with open("models/last_updated.txt", "w") as f:
+        f.write(datetime.now(PKT).strftime("%d %b %Y, %H:%M PKT"))
+    print("\n✅ Saved models/last_updated.txt")
