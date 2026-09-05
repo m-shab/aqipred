@@ -14,7 +14,7 @@ LAT = 31.5497
 LON = 74.3436
 
 END_DATE   = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-START_DATE = (datetime.now() - timedelta(days=90)).strftime("%Y-%m-%d")
+START_DATE = (datetime.now() - timedelta(days=365)).strftime("%Y-%m-%d")
 
 def fetch_historical_weather():
     url = (

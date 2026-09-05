@@ -3,16 +3,16 @@ name: Feature Pipeline
 on:
   schedule:
     - cron: '0 * * * *'  # every hour
-  workflow_dispatch:       # allows manual run
+  workflow_dispatch:      # allows manual run
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
