@@ -52,14 +52,21 @@ def fetch_previous_aqi():
         return None
     return response.data[0]["aqi"]
 
+def row_exists_for_hour(ts):
+    """Check if we already have a row for this exact hour to avoid duplicates."""
+    response = supabase.table("features").select("timestamp").eq("timestamp", ts).execute()
+    return len(response.data) > 0
+
 def compute_features(weather, aq, prev_aqi):
     now = datetime.now()
+    # Truncate to the current hour so timestamps always align with backfill data
+    now_hour = now.replace(minute=0, second=0, microsecond=0)
     aqi_change_rate = aq["aqi"] - prev_aqi if prev_aqi is not None else 0
     return {
-        "timestamp"      : now.strftime("%Y-%m-%d %H:%M:%S"),
-        "hour"           : now.hour,
-        "day"            : now.weekday(),
-        "month"          : now.month,
+        "timestamp"      : now_hour.strftime("%Y-%m-%d %H:%M:%S"),
+        "hour"           : now_hour.hour,
+        "day"            : now_hour.weekday(),
+        "month"          : now_hour.month,
         "aqi"            : aq["aqi"],
         "aqi_change_rate": aqi_change_rate,
         "pm25"           : aq["pm25"],
@@ -90,5 +97,9 @@ if __name__ == "__main__":
     row = compute_features(weather, aq, prev_aqi)
     print(row)
 
-    print("\nPushing to Supabase...")
-    push_to_supabase(row)
+    # Skip if this hour already exists (prevents duplicate rows on re-runs)
+    if row_exists_for_hour(row["timestamp"]):
+        print(f"\n⚠️  Row for {row['timestamp']} already exists — skipping insert.")
+    else:
+        print("\nPushing to Supabase...")
+        push_to_supabase(row)
