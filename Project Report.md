@@ -108,6 +108,8 @@ The data is collected from a single API, OpenMeteo, as opposed to AQICN or OpenW
 
 While features such as temperature, humidity, wind speed etc. are the standard for any AQI prediction model, I incorporated features such as AQI change rate, AQI lag, and AQI rolling mean for a better prediction. This was necessary for more accurate predictions and moving away from a negative R^2 score, which was an issue I faced in the beginning for even the 24-hour prediction.
 
+OpenMeteo API is also a forecast, not current conditions. So, oftentimes, the current temperature or AQI tends to be overestimated/underestimated compared to actual live conditions.
+
 ---
 
 ## 4. Feature Pipeline
@@ -259,6 +261,18 @@ Five models are trained and evaluated for each forecast horizon:
 | LightGBM | Gradient boosting | 300 estimators, fast leaf-wise tree growth |
  
 All models are also compared against a **persistence baseline**, a naive forecast that assumes the AQI at prediction time will equal the last known AQI value. A model is only saved if it beats this baseline by RMSE.
+
+**XGBoost Tuned parameters vs base XGBoost:**
+
+| Parameter | XGBoost | XGBoost Tuned |
+|---|---|---|
+| `n_estimators` | 300 | 500 |
+| `learning_rate` | 0.05 | 0.03 |
+| `max_depth` | 6 | 5 |
+| `subsample` | 1.0 | ~0.8 |
+| `colsample_bytree` | 1.0 | ~0.8 |
+
+The tuning strategy was to make the model learn more slowly and conservatively. More trees with a lower learning rate means smaller steps over more iterations, which generalises better as no single tree overcorrects. Shallower depth reduces overfitting by limiting how complex each tree can be. Subsampling ~80% of rows and features per tree introduces randomness similar to Random Forest, preventing the model from memorising training data.
  
 ### 5.3 Evaluation Metrics
  
@@ -356,7 +370,7 @@ Both workflows access Supabase credentials exclusively through GitHub Actions en
 
 **Issues**
 
-Github doesn't run hourly pipelines at the right time due to some issues with queuing for Github Actions. For now the hourly feature pipeline runs every 2/3 hours.
+Github doesn't run hourly pipelines at the right time due to some issues with queuing for Github Actions. For now the hourly feature pipeline runs every 2/3 hours. 
 
  
 ---
